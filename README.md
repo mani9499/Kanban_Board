@@ -20,3 +20,11 @@ A simple and interactive Kanban board where you can create, manage, and drag-and
     npm install
 4.run the project
      npm start
+##usage
+   Adding a Task: Enter the task name and description, then click the "Add" button or press the Enter key.
+   
+   Searching Tasks: Use the search bar at the top to filter tasks by name.
+   
+   Drag and Drop: Drag a task to another status (e.g., move it from "To Do" to "In Progress").
+   
+   Task Information: Hover over a task to view its description.
