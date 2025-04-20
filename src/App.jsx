@@ -1,42 +1,52 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import "./App.css";
-function App() {
-  useEffect(() => {
-    localStorage.setItem("kanban-tasks", JSON.stringify(tasks));
-  }, []);
-  const Data = localStorage.getItem("kanban-tasks")
-    ? JSON.parse(localStorage.getItem("kanban-tasks"))
-    : [];
 
-  const [tasks, setTasks] = useState(Data);
+function App() {
+  // Load tasks from localStorage, or use an empty array if none exist
+  const initialTasks = JSON.parse(localStorage.getItem("kanban-tasks")) || [];
+
+  const [tasks, setTasks] = useState(initialTasks);
   const [searchTerm, setSearchTerm] = useState("");
-  const [newtask, setNewTask] = useState("");
+  const [newTask, setNewTask] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [readDescription, setReadDescription] = useState("");
+
+  // Memoize tasks based on the search term to avoid unnecessary filtering on each render
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(
+      (task) =>
+        task.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [tasks, searchTerm]);
+
+  // Store tasks in localStorage only when they change
   useEffect(() => {
-    localStorage.setItem("kanban-tasks", JSON.stringify(tasks));
+    if (tasks.length) {
+      localStorage.setItem("kanban-tasks", JSON.stringify(tasks));
+    }
   }, [tasks]);
+
   const status = [
     { id: "ToDo", title: "To Do" },
     { id: "InProgress", title: "In Progress" },
     { id: "PeerReview", title: "Peer Review" },
     { id: "Done", title: "Done" },
   ];
+
+  // Handle task drag-and-drop
   const onDragEnd = (result) => {
     const { source, destination } = result;
 
-    if (!destination) return;
-
+    if (!destination) return; // if dropped outside of the list, do nothing
     if (
       source.droppableId === destination.droppableId &&
       source.index === destination.index
     ) {
-      return;
+      return; // if the task is dropped in the same position, do nothing
     }
 
     const updatedTasks = [...tasks];
-
     const [movedTask] = updatedTasks.splice(
       updatedTasks.findIndex(
         (t) =>
@@ -61,6 +71,20 @@ function App() {
     setTasks(finalTasks);
   };
 
+  // Add a new task to the list
+  const addNewTask = () => {
+    if (!newTask.trim()) return; // Do nothing if no task is entered
+    const task = {
+      id: Date.now(),
+      name: newTask,
+      description: newDescription || "No description",
+      status: "ToDo",
+    };
+    setTasks((prevTasks) => [...prevTasks, task]);
+    setNewTask("");
+    setNewDescription("");
+  };
+
   return (
     <div className="App">
       <h2>KanbanBoard</h2>
@@ -75,7 +99,7 @@ function App() {
         <input
           type="text"
           placeholder="New task..."
-          value={newtask}
+          value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
         />
         <input
@@ -85,19 +109,8 @@ function App() {
           onChange={(e) => setNewDescription(e.target.value)}
         />
         <i
-          class="ri-add-circle-fill"
-          onClick={() => {
-            if (!newtask.trim()) return;
-            const newTask = {
-              id: Date.now(),
-              name: newtask,
-              description: newDescription || "No description",
-              status: "ToDo",
-            };
-            setTasks([...tasks, newTask]);
-            setNewTask("");
-            setNewDescription("");
-          }}
+          className="ri-add-circle-fill"
+          onClick={addNewTask}
         ></i>
       </div>
 
@@ -113,18 +126,13 @@ function App() {
                 >
                   <h3>{s.title}</h3>
                   {(() => {
-                    const filtered = tasks.filter(
-                      (task) =>
-                        task.status === s.id &&
-                        typeof task.name === "string" &&
-                        task.name
-                          .toLowerCase()
-                          .includes(searchTerm.toLowerCase())
+                    const filteredStatusTasks = filteredTasks.filter(
+                      (task) => task.status === s.id
                     );
-                    if (filtered.length === 0) {
+                    if (filteredStatusTasks.length === 0) {
                       return <p className="no-tasks">No tasks</p>;
                     }
-                    return filtered.map((task, index) => (
+                    return filteredStatusTasks.map((task, index) => (
                       <Draggable
                         key={task.id}
                         draggableId={task.id.toString()}
@@ -155,6 +163,7 @@ function App() {
           ))}
         </div>
       </DragDropContext>
+
       <div className="read_description">
         <i className="ri-information-line"></i>
         <p>{readDescription}</p>
